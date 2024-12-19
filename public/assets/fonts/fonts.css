@@ -1,0 +1,7 @@
+/* Load the Retronoid font */
+@font-face {
+    font-family: 'Retronoid';
+    src: url('./retronoid/Retronoid.ttf') format('truetype');  /* Updated path to include subfolder */
+    font-weight: normal;
+    font-style: normal;
+}
