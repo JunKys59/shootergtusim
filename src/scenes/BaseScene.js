@@ -208,74 +208,35 @@ export class BaseScene extends Scene {
     createAnimations() {
         console.log('Creating animations...');
         
-        // Check if textures exist before creating animations
-        const textureKeys = ['character_idle', 'character_run', 'character_jump', 'character_death', 'character_crouch'];
-        textureKeys.forEach(key => {
-            if (!this.textures.exists(key)) {
-                console.error(`Missing texture: ${key}`);
+        // Animation configurations
+        const animations = {
+            idle: { key: 'character_idle', frames: 4, frameRate: 8 },
+            run: { key: 'character_run', frames: 6, frameRate: 10 },
+            jump: { key: 'character_jump', frames: 2, frameRate: 8 }
+        };
+
+        // Create all animations
+        Object.entries(animations).forEach(([name, config]) => {
+            if (!this.textures.exists(config.key)) {
+                console.error(`Missing texture: ${config.key}`);
                 return;
             }
-            console.log(`Found texture: ${key} with ${this.textures.get(key).frameTotal} frames`);
+
+            try {
+                this.anims.create({
+                    key: name,
+                    frames: this.anims.generateFrameNumbers(config.key, {
+                        start: 0,
+                        end: config.frames
+                    }),
+                    frameRate: config.frameRate,
+                    repeat: -1
+                });
+                console.log(`Created ${name} animation`);
+            } catch (error) {
+                console.error(`Error creating ${name} animation:`, error);
+            }
         });
-
-        try {
-            // Create idle animation
-            this.anims.create({
-                key: 'idle',
-                frames: this.anims.generateFrameNumbers('character_idle', { 
-                    start: 0, 
-                    end: 4  
-                }),
-                frameRate: 8,
-                repeat: -1
-            });
-            console.log('Created idle animation');
-
-            // Create run animation
-            this.anims.create({
-                key: 'run',
-                frames: this.anims.generateFrameNumbers('character_run', { 
-                    start: 0, 
-                    end: 6  
-                }),
-                frameRate: 10,
-                repeat: -1
-            });
-            console.log('Created run animation');
-
-            // Create jump animation
-            this.anims.create({
-                key: 'jump',
-                frames: this.anims.generateFrameNumbers('character_jump', { 
-                    start: 0, 
-                    end: 2  
-                }),
-                frameRate: 10,
-                repeat: 0
-            });
-            console.log('Created jump animation');
-            
-            // Create crouch animation
-            this.anims.create({
-                key: 'crouch',
-                frames: this.anims.generateFrameNumbers('character_crouch'),
-                frameRate: 10,
-                repeat: 0
-            });
-            console.log('Created crouch animation');
-
-            // Create death animation
-            this.anims.create({
-                key: 'death',
-                frames: this.anims.generateFrameNumbers('character_death'),
-                frameRate: 8,
-                repeat: 0
-            });
-            console.log('Created death animation');
-            
-        } catch (error) {
-            console.error('Error creating animations:', error);
-        }
     }
 
     updateScoreText() {
@@ -370,19 +331,6 @@ export class BaseScene extends Scene {
         // Only handle animations if player is a sprite (not a rectangle fallback)
         const isSprite = this.player.hasOwnProperty('play');
         
-        // Handle crouching
-        if (this.wasd.down.isDown) {
-            this.player.setVelocityX(0);
-            if (isSprite && this.player.body.onFloor() && this.anims.exists('crouch')) {
-                try {
-                    this.player.play('crouch', true);
-                } catch (error) {
-                    console.error('Error playing crouch animation:', error);
-                }
-            }
-            return; // Don't process other movements while crouching
-        }
-        
         // Handle horizontal movement
         if (this.wasd.left.isDown) {
             this.player.setVelocityX(-300);
@@ -440,38 +388,7 @@ export class BaseScene extends Scene {
     }
 
     hitEnemy(player, enemy) {
-        // Stop player movement immediately
-        this.player.body.setVelocity(0, 0);
-        this.player.body.allowGravity = false;
-        
-        // Freeze all enemies in place
-        if (this.enemies) {
-            this.enemies.children.iterate((enemySprite) => {
-                if (enemySprite && enemySprite.body) {
-                    enemySprite.body.setVelocity(0, 0);
-                    enemySprite.body.allowGravity = false;
-                }
-            });
-        }
-        
-        // Disable all physics updates
-        this.physics.pause();
-        
-        // Play death animation instantly if available
-        if (this.player.play && this.anims.exists('death')) {
-            this.player.play('death');
-            
-            // Wait for death animation to complete before handling death
-            this.time.delayedCall(1000, () => {
-                // Resume physics before transitioning
-                this.physics.resume();
-                this.handlePlayerDeath();
-            });
-        } else {
-            // Resume physics before transitioning
-            this.physics.resume();
-            this.handlePlayerDeath();
-        }
+        this.handlePlayerDeath();
     }
 
     handlePlayerDeath() {
@@ -481,8 +398,10 @@ export class BaseScene extends Scene {
         this.registry.set('lives', lives);
 
         if (lives <= 0) {
+            // Game Over - Transition to GameOver scene
             this.scene.start('GameOver');
         } else {
+            // Restart current scene
             this.scene.restart();
         }
     }

@@ -95,9 +95,6 @@ export class GameScene5 extends BaseScene {
                 this.addPoints(100); // Big points for killing the boss
                 this.boss = null; // Set boss to null when destroyed
                 this.bossDefeated = true;
-                
-                // Transition to mission complete scene
-                this.scene.start('MissionComplete');
             }
         }
     }

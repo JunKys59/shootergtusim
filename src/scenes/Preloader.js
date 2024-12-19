@@ -47,61 +47,50 @@ export class Preloader extends Scene {
             console.error('Error details:', file.data);
         });
 
-        // Load styles
+        // Load assets
         this.load.css('style', './assets/css/style.css');
-        
-        // Load main menu background
         this.load.image('mainbg', './assets/mainbg.png');
         
-        // Load character sprites with correct paths and frame sizes
-        this.load.spritesheet('character_idle', './assets/character/character_Idle.png', {
-            frameWidth: 48,
-            frameHeight: 48,
-            startFrame: 0,
-            endFrame: 4,
-            spacing: 0,
-            margin: 0
-        });
-        
-        this.load.spritesheet('character_run', './assets/character/character_Run.png', {
-            frameWidth: 48,
-            frameHeight: 48,
-            startFrame: 0,
-            endFrame: 6,
-            spacing: 0,
-            margin: 0
-        });
-        
-        this.load.spritesheet('character_jump', './assets/character/character_Jump.png', {
-            frameWidth: 48,
-            frameHeight: 48,
-            startFrame: 0,
-            endFrame: 2,
-            spacing: 0,
-            margin: 0
-        });
-        
-        // Load crouch animation spritesheet
-        this.load.spritesheet('character_crouch', './assets/character/character_Crouch.png', {
-            frameWidth: 48,
-            frameHeight: 48
-        });
+        // Load character spritesheets
+        const characterSprites = {
+            idle: { frames: 4 },
+            run: { frames: 6 },
+            jump: { frames: 2 },
+            crouch: { frames: 0 },
+            death: { frames: 0 }
+        };
 
-        // Load death animation spritesheet
-        this.load.spritesheet('character_death', './assets/character/character_Death.png', {
-            frameWidth: 48,
-            frameHeight: 48
+        // Load all character animations
+        Object.entries(characterSprites).forEach(([action, config]) => {
+            this.load.spritesheet(
+                `character_${action}`,
+                `./assets/character/character_${action.charAt(0).toUpperCase() + action.slice(1)}.png`,
+                {
+                    frameWidth: 48,
+                    frameHeight: 48,
+                    startFrame: 0,
+                    endFrame: config.frames,
+                    spacing: 0,
+                    margin: 0
+                }
+            );
         });
         
-        // Load bullet sprite
+        // Load game assets
         this.load.image('bullet', './assets/bullet.png');
         
-        // Load sound effects
-        this.load.audio('laser', './assets/sounds/laser.wav');
-        this.load.audio('bgMusic', './assets/sounds/background_music.mp3');
-        this.load.audio('hit', './assets/sounds/hit.wav');
+        // Load audio
+        const audioAssets = {
+            laser: 'laser.wav',
+            bgMusic: 'background_music.mp3',
+            hit: 'hit.wav'
+        };
+
+        Object.entries(audioAssets).forEach(([key, file]) => {
+            this.load.audio(key, `./assets/sounds/${file}`);
+        });
         
-        // Load the font file directly
+        // Load font
         this.load.binary('retronoid', './assets/fonts/retronoid/Retronoid.ttf');
     }
 

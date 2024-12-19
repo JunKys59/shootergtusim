@@ -29,12 +29,6 @@ class Enemy {
         this.moveSpeed = 150;  // Movement speed when chasing
         this.patrolSpeed = 100; // Movement speed when patrolling
         
-        // Add jump properties
-        this.jumpForce = -400;
-        this.lastJumpTime = 0;
-        this.minJumpDelay = 2000; // Minimum time between jumps (2 seconds)
-        this.maxJumpDelay = 5000; // Maximum time between jumps (5 seconds)
-        
         // Set up patrol boundaries
         this.leftBound = 20;  // Just enough space to not trigger scene change
         this.rightBound = scene.scale.width - 20;  // Just enough space to not trigger scene change
@@ -88,10 +82,6 @@ class Enemy {
         this.sprite.body.setVelocityY(velocity);
     }
 
-    isOnGround() {
-        return this.sprite.body.touching.down || this.sprite.body.blocked.down;
-    }
-
     getX() {
         return this.sprite.x;
     }
@@ -136,10 +126,6 @@ class Enemy {
         }
     }
 
-    jump() {
-        this.sprite.body.setVelocityY(this.jumpForce);
-    }
-
     update() {
         if (!this.sprite || !this.sprite.active) return;
 
@@ -154,16 +140,6 @@ class Enemy {
         this.healthBar.y = this.sprite.y - yOffset;
         this.healthBarBackground.x = this.sprite.x;
         this.healthBar.x = this.sprite.x;
-
-        // Random jumping logic
-        const currentTime = this.scene.time.now;
-        if (currentTime - this.lastJumpTime >= this.minJumpDelay) {
-            // Random chance to jump
-            if (Phaser.Math.Between(1, 100) <= 5 && this.isOnGround()) { // 5% chance to jump when on ground
-                this.jump();
-                this.lastJumpTime = currentTime + Phaser.Math.Between(0, this.maxJumpDelay - this.minJumpDelay);
-            }
-        }
 
         // Calculate distance to player
         const distanceToPlayer = Phaser.Math.Distance.Between(
