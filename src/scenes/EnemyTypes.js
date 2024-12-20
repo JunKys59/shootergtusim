@@ -28,6 +28,8 @@ class Enemy {
         this.aggroRange = 300; // Distance at which enemy starts chasing player
         this.moveSpeed = 150;  // Movement speed when chasing
         this.patrolSpeed = 100; // Movement speed when patrolling
+        this.jumpForce = -400; // Jump force
+        this.jumpChance = 0.01; // 1% chance to jump each update
         
         // Set up patrol boundaries
         this.leftBound = 20;  // Just enough space to not trigger scene change
@@ -132,6 +134,11 @@ class Enemy {
         const player = this.scene.player;
         if (!player) return;
 
+        // Check if enemy should jump (only if on ground)
+        if (this.sprite.body.onFloor() && Math.random() < this.jumpChance) {
+            this.sprite.body.setVelocityY(this.jumpForce);
+        }
+
         // Update health bar position to follow enemy
         const enemyHeight = this.sprite.height * this.sprite.scaleY;
         const healthBarHeight = Math.max(6, Math.floor(enemyHeight * 0.08));
@@ -173,14 +180,18 @@ class WeakEnemy extends Enemy {
         super(scene, x, y, 'weak_enemy', 1);
         this.moveSpeed = 100;
         this.patrolSpeed = 75;
+        this.jumpForce = -300;  // Weak jump
+        this.jumpChance = 0.005; // 0.5% chance to jump
     }
 }
 
 class MediumEnemy extends Enemy {
     constructor(scene, x, y) {
-        super(scene, x, y, 'player', 2, 0xFFD700); // Yellow/gold color, 2 HP
-        this.aggroRange = 300; // Medium range
-        this.moveSpeed = 140;  // Medium speed
+        super(scene, x, y, 'player', 2, 0xFFD700);
+        this.aggroRange = 300;
+        this.moveSpeed = 140;
+        this.jumpForce = -400;  // Medium jump
+        this.jumpChance = 0.01; // 1% chance to jump
     }
 }
 
@@ -189,6 +200,8 @@ class StrongEnemy extends Enemy {
         super(scene, x, y, 'strong_enemy', 3);
         this.moveSpeed = 150;
         this.patrolSpeed = 100;
+        this.jumpForce = -500;  // Strong jump
+        this.jumpChance = 0.015; // 1.5% chance to jump
     }
 }
 
@@ -199,22 +212,24 @@ class BossEnemy extends Enemy {
         // Boss is bigger
         this.sprite.setScale(2);
         
-        // Adjust physics body for larger size and ensure it stays on ground
+        // Adjust physics body for larger size
         this.sprite.body.setSize(32, 46);
         this.sprite.body.setOffset(0, 1);
-        this.sprite.body.setGravityY(2000); // Stronger gravity to stay grounded
-        this.sprite.body.setMass(2); // Heavier mass
+        this.sprite.body.setGravityY(2000);
+        this.sprite.body.setMass(2);
         
         // Create health bar only after setting scale
         this.createHealthBar();
         
-        this.aggroRange = 400; // Longest range
+        this.aggroRange = 400;
         this.moveSpeed = 200;
         this.patrolSpeed = 75;
+        this.jumpForce = -600;  // Very strong jump
+        this.jumpChance = 0.02; // 2% chance to jump
         
         // Force position above ground
         const groundTop = scene.groundTop || (scene.scale.height - 100);
-        this.sprite.y = groundTop - (46 * this.sprite.scale); // Account for scaled size
+        this.sprite.y = groundTop - (46 * this.sprite.scale);
     }
 }
 

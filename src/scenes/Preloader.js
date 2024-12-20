@@ -48,36 +48,43 @@ export class Preloader extends Scene {
         });
 
         // Load assets
-        this.load.css('style', './assets/css/style.css');
-        this.load.image('mainbg', './assets/mainbg.png');
+        this.load.css('style', '/assets/css/style.css');
+        this.load.image('mainbg', '/assets/mainbg.png');
         
         // Load character spritesheets
-        const characterSprites = {
-            idle: { frames: 4 },
-            run: { frames: 6 },
-            jump: { frames: 2 },
-            crouch: { frames: 0 },
-            death: { frames: 0 }
-        };
+        console.log('Loading character_Walking.png...');
+        this.load.spritesheet('character_Walking', '/assets/character/character_Walking.png', {
+            frameWidth: 48,  
+            frameHeight: 48,
+            startFrame: 0,
+            endFrame: -1,  // Auto-detect number of frames
+            spacing: 0,    // No space between frames
+            margin: 0      // No margin around frames
+        });
 
-        // Load all character animations
-        Object.entries(characterSprites).forEach(([action, config]) => {
-            this.load.spritesheet(
-                `character_${action}`,
-                `./assets/character/character_${action.charAt(0).toUpperCase() + action.slice(1)}.png`,
-                {
-                    frameWidth: 48,
-                    frameHeight: 48,
-                    startFrame: 0,
-                    endFrame: config.frames,
-                    spacing: 0,
-                    margin: 0
-                }
-            );
+        // Debug event for specific file
+        this.load.on('filecomplete-spritesheet-character_Walking', () => {
+            console.log('character_Walking.png loaded successfully');
+            const texture = this.textures.get('character_Walking');
+            console.log('Texture dimensions:', texture.source[0].width, 'x', texture.source[0].height);
+        });
+
+        this.load.spritesheet('character_idle', '/assets/character/character_Idle.png', {
+            frameWidth: 48,
+            frameHeight: 48,
+            spacing: 0,
+            margin: 0
+        });
+
+        this.load.spritesheet('character_jump', '/assets/character/character_Jump.png', {
+            frameWidth: 48,
+            frameHeight: 48,
+            spacing: 0,
+            margin: 0
         });
         
         // Load game assets
-        this.load.image('bullet', './assets/bullet.png');
+        this.load.image('bullet', '/assets/bullet.png');
         
         // Load audio
         const audioAssets = {
@@ -87,11 +94,11 @@ export class Preloader extends Scene {
         };
 
         Object.entries(audioAssets).forEach(([key, file]) => {
-            this.load.audio(key, `./assets/sounds/${file}`);
+            this.load.audio(key, `/assets/sounds/${file}`);
         });
         
         // Load font
-        this.load.binary('retronoid', './assets/fonts/retronoid/Retronoid.ttf');
+        this.load.binary('retronoid', '/assets/fonts/retronoid/Retronoid.ttf');
     }
 
     create() {
@@ -109,7 +116,7 @@ export class Preloader extends Scene {
         });
 
         // Debug logging for texture loading
-        const textureKeys = ['character_idle', 'character_run', 'character_jump'];
+        const textureKeys = ['character_Walking', 'character_idle', 'character_jump'];
         textureKeys.forEach(key => {
             if (this.textures.exists(key)) {
                 console.log(`${key} texture loaded successfully`);

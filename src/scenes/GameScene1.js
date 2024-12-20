@@ -18,6 +18,9 @@ export class GameScene1 extends BaseScene {
         
         const { width, height } = this.scale;
         
+        // Set background color to blue
+        this.cameras.main.setBackgroundColor('#4488ff');
+        
         // Set next scene
         this.nextSceneName = 'GameScene2';
         

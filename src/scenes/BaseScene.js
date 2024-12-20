@@ -23,23 +23,39 @@ export class BaseScene extends Scene {
         const height = this.scale.height;
         console.log('Screen dimensions:', width, 'x', height);
 
-        // Set world gravity
-        this.physics.world.gravity.y = 800;
+        // Set up physics
+        this.physics.world.gravity.y = 1000;  // Increased world gravity
         this.physics.world.setBounds(0, 0, width, height);
-
-        // Add ground as a rectangle instead of an image - scaled to screen width
-        this.platforms = this.physics.add.staticGroup();
-        const ground = this.add.rectangle(width/2, height - 100, width, 32, 0x00ff00);
-        this.physics.add.existing(ground, true);
-        this.platforms.add(ground);
-
-        // Store ground top position for spawning entities (16 is half of ground height)
-        this.groundTop = ground.y - 16;
 
         // Helper method to get spawn height for entities
         this.getSpawnHeight = () => {
-            return this.groundTop - 24; // Adjust based on entity height
+            return height - 42; // Moved 1 pixel higher (was 41)
         };
+
+        // Create platforms group
+        this.platforms = this.physics.add.staticGroup();
+        
+        // Calculate ground position and size
+        const spawnY = this.getSpawnHeight();
+        const groundStartY = spawnY + 24; // Start from middle of character (48/2 = 24)
+        const groundHeight = height - groundStartY; // Height from middle of character to bottom
+        
+        // Add ground as a rectangle
+        const ground = this.add.rectangle(width/2, groundStartY + groundHeight/2, width, groundHeight, 0x006400);
+        this.physics.add.existing(ground, true);
+        
+        // Set up ground physics for precise collision
+        ground.body.setSize(width, groundHeight);
+        ground.body.setOffset(0, 0);
+        ground.body.immovable = true;
+        ground.body.moves = false;
+        ground.body.allowGravity = false;
+        ground.body.checkCollision.up = true;    // Only collide with the top
+        ground.body.checkCollision.down = false;
+        ground.body.checkCollision.left = false;
+        ground.body.checkCollision.right = false;
+        
+        this.platforms.add(ground);
 
         // Create animations first
         this.createAnimations();
@@ -67,24 +83,52 @@ export class BaseScene extends Scene {
             this.physics.add.existing(this.player);
         } else {
             console.log('Creating player sprite...');
-            // Create player with physics
+            // Set up player physics and collisions
             this.player = this.physics.add.sprite(
                 width / 2,  
-                this.getSpawnHeight(),  // Spawn on ground (32 is player height)
+                this.getSpawnHeight(),
                 'character_idle'
             );
 
-            // Scale the sprite up (since it's 32x32)
+            // Scale the sprite to exactly 2
             this.player.setScale(2);
 
             // Set player properties
             this.player.setCollideWorldBounds(true);
-            this.player.setBounce(0.1);
-            this.player.setGravityY(300);
+            this.player.setBounce(0);
+            this.player.setGravityY(200);  // Changed from 500 to 200
+            this.player.body.setAllowGravity(true);
             
+            // Customize world bounds collision
+            this.player.body.onWorldBounds = true;
+            this.player.body.customBoundsRectangle = new Phaser.Geom.Rectangle(
+                -1000,              // x (far left to allow movement)
+                0,                  // y (top)
+                this.scale.width + 2000,  // width (extra wide to allow movement)
+                this.scale.height   // height (full height for bottom collision)
+            );
+
             // Set player body size and offset for better collisions
-            this.player.body.setSize(32, 32); // Set collision box size
-            this.player.body.setOffset(0, 0); // Adjust collision box position
+            this.player.body.setSize(48, 48);
+            this.player.body.setOffset(0, 0);
+
+            // Add collision between player and platforms with custom handler
+            this.physics.add.collider(this.player, this.platforms, (player, platform) => {
+                // Ensure player lands at the exact spawn height
+                if (player.body.touching.down) {
+                    player.y = this.getSpawnHeight();
+                }
+            });
+
+            // Set up keyboard controls
+            this.cursors = this.input.keyboard.createCursorKeys();
+            // Add WASD keys for movement
+            this.wasd = this.input.keyboard.addKeys({
+                up: Phaser.Input.Keyboard.KeyCodes.W,
+                down: Phaser.Input.Keyboard.KeyCodes.S,
+                left: Phaser.Input.Keyboard.KeyCodes.A,
+                right: Phaser.Input.Keyboard.KeyCodes.D
+            });
 
             try {
                 // Play idle animation by default
@@ -107,19 +151,6 @@ export class BaseScene extends Scene {
         console.log('Player created at:', this.player.x, this.player.y);
         console.log('Player texture:', this.player.texture ? this.player.texture.key : 'No texture');
         console.log('Available animations:', this.anims.names);
-
-        // Add colliders
-        this.physics.add.collider(this.player, this.platforms);
-
-        // Set up keyboard controls
-        this.cursors = this.input.keyboard.createCursorKeys();
-        // Add WASD keys for movement
-        this.wasd = this.input.keyboard.addKeys({
-            up: Phaser.Input.Keyboard.KeyCodes.W,
-            down: Phaser.Input.Keyboard.KeyCodes.S,
-            left: Phaser.Input.Keyboard.KeyCodes.A,
-            right: Phaser.Input.Keyboard.KeyCodes.D
-        });
 
         // Add mouse input for shooting
         this.input.on('pointerdown', (pointer) => {
@@ -208,35 +239,78 @@ export class BaseScene extends Scene {
     createAnimations() {
         console.log('Creating animations...');
         
-        // Animation configurations
-        const animations = {
-            idle: { key: 'character_idle', frames: 4, frameRate: 8 },
-            run: { key: 'character_run', frames: 6, frameRate: 10 },
-            jump: { key: 'character_jump', frames: 2, frameRate: 8 }
-        };
+        // Check if texture exists
+        if (!this.textures.exists('character_Walking')) {
+            console.error('character_Walking texture not found!');
+            return;
+        }
 
-        // Create all animations
-        Object.entries(animations).forEach(([name, config]) => {
-            if (!this.textures.exists(config.key)) {
-                console.error(`Missing texture: ${config.key}`);
-                return;
-            }
+        // Get texture dimensions
+        const walkingTexture = this.textures.get('character_Walking');
+        const frameWidth = 48;
+        const totalFrames = Math.floor(walkingTexture.source[0].width / frameWidth);
+        console.log(`Total walking frames: ${totalFrames}`);
 
+        console.log('Creating walking animation...');
+        try {
+            // Create walking animation
+            this.anims.create({
+                key: 'walking',
+                frames: this.anims.generateFrameNumbers('character_Walking', {
+                    start: 0,
+                    end: totalFrames - 1,
+                    first: 0
+                }),
+                frameRate: 12,
+                repeat: -1,
+                yoyo: false
+            });
+            console.log('Walking animation created successfully');
+        } catch (error) {
+            console.error('Error creating walking animation:', error);
+        }
+
+        // Create idle animation
+        if (this.textures.exists('character_idle')) {
+            const idleTexture = this.textures.get('character_idle');
+            const idleFrames = Math.floor(idleTexture.source[0].width / 48);
             try {
                 this.anims.create({
-                    key: name,
-                    frames: this.anims.generateFrameNumbers(config.key, {
+                    key: 'idle',
+                    frames: this.anims.generateFrameNumbers('character_idle', {
                         start: 0,
-                        end: config.frames
+                        end: idleFrames - 1
                     }),
-                    frameRate: config.frameRate,
+                    frameRate: 8,
                     repeat: -1
                 });
-                console.log(`Created ${name} animation`);
+                console.log('Idle animation created successfully');
             } catch (error) {
-                console.error(`Error creating ${name} animation:`, error);
+                console.error('Error creating idle animation:', error);
             }
-        });
+        }
+
+        // Create jump animation
+        if (this.textures.exists('character_jump')) {
+            const jumpTexture = this.textures.get('character_jump');
+            const jumpFrames = Math.floor(jumpTexture.source[0].width / 48);
+            try {
+                this.anims.create({
+                    key: 'jump',
+                    frames: [
+                        { key: 'character_jump', frame: 0 },  // First frame
+                        { key: 'character_jump', frame: 1 },  // Second frame
+                        { key: 'character_jump', frame: 1 }   // Third frame (reusing second frame)
+                    ],
+                    frameRate: 12,  // Increased from 8 to 12 for smoother animation
+                    repeat: 0,
+                    duration: 300   // Total animation duration in milliseconds
+                });
+                console.log('Jump animation created successfully');
+            } catch (error) {
+                console.error('Error creating jump animation:', error);
+            }
+        }
     }
 
     updateScoreText() {
@@ -328,39 +402,41 @@ export class BaseScene extends Scene {
             this.scoreText.setText('Score: ' + this.registry.get('score'));
         }
 
-        // Only handle animations if player is a sprite (not a rectangle fallback)
-        const isSprite = this.player.hasOwnProperty('play');
-        
-        // Handle horizontal movement
+        const isSprite = this.player.type === 'Sprite';
+
+        // Handle left/right movement
+        const moveSpeed = 300;
         if (this.wasd.left.isDown) {
-            this.player.setVelocityX(-300);
-            if (isSprite) {
-                this.player.flipX = true;
-                if (this.player.body.onFloor() && this.anims.exists('run')) {
-                    try {
-                        this.player.play('run', true);
-                    } catch (error) {
-                        console.error('Error playing run animation:', error);
+            this.player.setVelocityX(-moveSpeed);
+            this.player.setFlipX(true);
+            if (isSprite && this.player.body.onFloor()) {
+                try {
+                    if (!this.player.anims.isPlaying || this.player.anims.currentAnim.key !== 'walking') {
+                        this.player.play('walking', true);
                     }
+                } catch (error) {
+                    console.error('Error playing walking animation:', error);
                 }
             }
         } else if (this.wasd.right.isDown) {
-            this.player.setVelocityX(300);
-            if (isSprite) {
-                this.player.flipX = false;
-                if (this.player.body.onFloor() && this.anims.exists('run')) {
-                    try {
-                        this.player.play('run', true);
-                    } catch (error) {
-                        console.error('Error playing run animation:', error);
+            this.player.setVelocityX(moveSpeed);
+            this.player.setFlipX(false);
+            if (isSprite && this.player.body.onFloor()) {
+                try {
+                    if (!this.player.anims.isPlaying || this.player.anims.currentAnim.key !== 'walking') {
+                        this.player.play('walking', true);
                     }
+                } catch (error) {
+                    console.error('Error playing walking animation:', error);
                 }
             }
         } else {
             this.player.setVelocityX(0);
-            if (isSprite && this.player.body.onFloor() && this.anims.exists('idle')) {
+            if (isSprite && this.player.body.onFloor()) {
                 try {
-                    this.player.play('idle', true);
+                    if (!this.player.anims.isPlaying || this.player.anims.currentAnim.key !== 'idle') {
+                        this.player.play('idle', true);
+                    }
                 } catch (error) {
                     console.error('Error playing idle animation:', error);
                 }
@@ -369,10 +445,16 @@ export class BaseScene extends Scene {
 
         // Handle jumping
         if (this.wasd.up.isDown && this.player.body.onFloor()) {
-            this.player.setVelocityY(-500);
+            this.player.setVelocityY(-500);  // Strong initial jump velocity
             if (isSprite && this.anims.exists('jump')) {
                 try {
                     this.player.play('jump', true);
+                    // Reset to idle when landing
+                    this.player.once('animationcomplete', () => {
+                        if (this.player.body.onFloor()) {
+                            this.player.play('idle', true);
+                        }
+                    });
                 } catch (error) {
                     console.error('Error playing jump animation:', error);
                 }
